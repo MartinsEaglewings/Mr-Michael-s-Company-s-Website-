@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FleetForge • Premium Fleet Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: 234 179 8;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .dark .glass {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .nav-link {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .nav-link:hover {
+            transform: translateX(8px);
+        }
+        
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+        }
+        
+        .modal {
+            animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        @keyframes modalPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .counter {
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .map-container {
+            background: linear-gradient(135deg, #0f172a, #1e2937);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .vehicle-dot {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200 font-sans">
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-950 to-black">
+        <div class="glass w-full max-w-md p-10 rounded-3xl shadow-2xl border border-yellow-500/20">
+            <div class="flex flex-col items-center text-center mb-10">
+                <div class="w-20 h-20 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl">
+                    <i class="fa-solid fa-truck text-4xl text-black"></i>
+                </div>
+                <h1 class="text-4xl font-semibold tracking-tight" style="font-family: 'Space Grotesk', sans-serif;">FleetForge</h1>
+                <p class="text-zinc-400 mt-2">Enterprise Fleet Management</p>
+            </div>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-1.5">Email</label>
+                    <input id="login-email" type="email" value="admin@fleetforge.com" 
+                           class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-500 transition-colors">
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-1.5">Password</label>
+                    <input id="login-password" type="password" value="admin123" 
+                           class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-500 transition-colors">
+                </div>
+                
+                <div class="flex items-center justify-between text-sm">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" class="w-4 h-4 accent-yellow-500" checked>
+                        <span class="text-zinc-400">Remember me</span>
+                    </label>
+                    <a href="#" onclick="showToast('Password reset link sent to admin@fleetforge.com')" class="text-yellow-400 hover:text-yellow-300">Forgot password?</a>
+                </div>
+                
+                <button onclick="login()" 
+                        class="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black font-semibold py-4 rounded-2xl transition-all active:scale-95">
+                    SIGN IN
+                </button>
+                
+                <div class="text-center text-xs text-zinc-500">
+                    Demo credentials pre-filled • Role: Administrator
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="main-app" class="hidden min-h-screen flex">
+        <!-- SIDEBAR -->
+        <div class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col">
+            <div class="p-6 border-b border-zinc-800 flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-2xl flex items-center justify-center">
+                    <i class="fa-solid fa-truck text-2xl text-black"></i>
+                </div>
+                <div>
+                    <div class="font-semibold text-2xl tracking-tighter" style="font-family: 'Space Grotesk', sans-serif;">FleetForge</div>
+                    <div class="text-xs text-emerald-400">• ONLINE</div>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-auto py-8 px-3" id="sidebar-nav">
+                <!-- populated by JS -->
+            </div>
+            
+            <div class="p-4 border-t border-zinc-800">
+                <div onclick="toggleSettings()" class="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800 rounded-2xl cursor-pointer">
+                    <i class="fa-solid fa-cog text-zinc-400"></i>
+                    <span class="font-medium">Settings</span>
+                </div>
+                <div onclick="logout()" class="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800 rounded-2xl cursor-pointer text-red-400">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="font-medium">Logout</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MAIN CONTENT -->
+        <div class="flex-1 flex flex-col">
+            <!-- TOP BAR -->
+            <div class="h-16 bg-zinc-900 border-b border-zinc-800 px-8 flex items-center justify-between">
+                <div class="flex items-center gap-8">
+                    <div onclick="toggleSidebar()" class="lg:hidden text-2xl cursor-pointer">
+                        <i class="fa-solid fa-bars"></i>
+                    </div>
+                    <div class="relative w-80">
+                        <input id="global-search" 
+                               onkeyup="if(event.key === 'Enter') performGlobalSearch(this.value)"
+                               type="text" placeholder="Search vehicles, drivers, trips..." 
+                               class="w-full bg-zinc-800 border border-zinc-700 focus:border-yellow-500 rounded-3xl py-3 px-5 pl-12 text-sm">
+                        <i class="fa-solid fa-magnifying-glass absolute left-5 top-3.5 text-zinc-500"></i>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <!-- Notifications -->
+                    <div onclick="toggleNotifications()" class="relative cursor-pointer">
+                        <i class="fa-solid fa-bell text-xl"></i>
+                        <div id="notif-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">7</div>
+                    </div>
+                    
+                    <!-- Fullscreen -->
+                    <button onclick="toggleFullscreen()" class="text-xl">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                    
+                    <!-- User -->
+                    <div onclick="toggleProfileMenu()" class="flex items-center gap-3 cursor-pointer">
+                        <div class="text-right">
+                            <div class="text-sm font-medium">Mr Michael</div>
+                            <div class="text-xs text-emerald-400">Admin</div>
+                        </div>
+                        <div class="w-9 h-9 bg-zinc-700 rounded-2xl overflow-hidden border border-yellow-400">
+                            <img src="michael.jpg" alt="user" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CONTENT AREA -->
+            <div class="flex-1 overflow-auto p-8" id="content-area">
+                <!-- Dashboard populated by JS -->
+            </div>
+            
+            <!-- FOOTER -->
+            <div class="h-12 bg-zinc-900 border-t border-zinc-800 flex items-center px-8 text-xs text-zinc-500">
+                <div class="flex-1">FleetForge v1.0 • Premium Enterprise Edition</div>
+                <div>© 2026 • Built as a single-file demonstration</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Vehicle Modal -->
+    <div id="vehicle-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div class="modal glass w-full max-w-2xl mx-4 rounded-3xl p-8 max-h-[90vh] overflow-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h2 id="modal-title" class="text-2xl font-semibold">Add New Vehicle</h2>
+                <button onclick="closeModal('vehicle-modal')" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6" id="vehicle-form">
+                <!-- JS populated form fields -->
+            </div>
+            
+            <div class="flex justify-end gap-4 mt-10">
+                <button onclick="closeModal('vehicle-modal')" 
+                        class="px-8 py-3 rounded-2xl border border-zinc-600 hover:bg-zinc-800">Cancel</button>
+                <button onclick="saveVehicle()" 
+                        class="px-8 py-3 bg-yellow-400 text-black font-semibold rounded-2xl hover:bg-amber-300">Save Vehicle</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 bg-zinc-800 border border-yellow-400 text-white px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-3">
+        <i class="fa-solid fa-check-circle text-emerald-400"></i>
+        <span id="toast-text"></span>
+    </div>
+
+    <script>
+        // Tailwind script already loaded
+        function initTailwind() {
+            // Already initialized via CDN
+        }
+        
+        // Sample Data
+        let vehicles = [
+            {
+                id: "V001",
+                reg: "ABC-1234",
+                vin: "1HGCM82633A004352",
+                brand: "Mercedes",
+                model: "Actros",
+                year: 2026,
+                type: "Truck",
+                fuel: "Diesel",
+                mileage: 12450,
+                fuelLevel: 78,
+                status: "Active",
+                driver: "Bola Hammed",
+                image: "https://picsum.photos/id/1015/600/400"
+            },
+            {
+                id: "V002",
+                reg: "XYZ-9876",
+                vin: "WBAUP9C51DVF12345",
+                brand: "BMW",
+                model: "X5",
+                year: 2022,
+                type: "SUV",
+                fuel: "Petrol",
+                mileage: 8750,
+                fuelLevel: 45,
+                status: "Maintenance",
+                driver: "Taofeek Johnson",
+                image: "https://picsum.photos/id/201/600/400"
+            }
+        ];
+        
+        let drivers = [
+            { id: "D001", name: "Bola Hammed", phone: "07045827691", status: "On Duty", vehicle: "V001" },
+            { id: "D002", name: "Taofeek Johnson", phone: "08072443679", status: "Available", vehicle: "V002" }
+        ];
+        
+        let trips = [];
+        
+        // Current user and state
+        let currentView = 'dashboard';
+        
+        // Navigation items
+        const navItems = [
+            { id: 'dashboard', icon: 'fa-gauge-high', label: 'Dashboard' },
+            { id: 'fleet', icon: 'fa-truck', label: 'Fleet' },
+            { id: 'drivers', icon: 'fa-users', label: 'Drivers' },
+            { id: 'trips', icon: 'fa-route', label: 'Trips' },
+            { id: 'gps', icon: 'fa-location-dot', label: 'Live GPS' },
+            { id: 'maintenance', icon: 'fa-wrench', label: 'Maintenance' },
+            { id: 'reports', icon: 'fa-chart-pie', label: 'Reports' }
+        ];
+        
+        function renderSidebar() {
+            const sidebar = document.getElementById('sidebar-nav');
+            let html = `<div class="px-3 space-y-1">`;
+            
+            navItems.forEach(item => {
+                const active = currentView === item.id ? 'bg-yellow-400 text-black' : 'hover:bg-zinc-800';
+                html += `
+                    <div onclick="navigateTo('${item.id}')" 
+                         class="nav-link flex items-center gap-3 px-5 py-4 rounded-3xl cursor-pointer ${active}">
+                        <i class="fa-solid ${item.icon} w-5"></i>
+                        <span class="font-medium">${item.label}</span>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+            sidebar.innerHTML = html;
+        }
+        
+        function navigateTo(view) {
+            currentView = view;
+            renderSidebar();
+            renderContent();
+        }
+        
+        function renderDashboard() {
+            const area = document.getElementById('content-area');
+            area.innerHTML = `
+                <div class="max-w-screen-2xl mx-auto">
+                    <!-- Header -->
+                    <div class="flex justify-between items-end mb-10">
+                        <div>
+                            <h1 class="text-5xl font-semibold tracking-tighter" style="font-family: 'Space Grotesk', sans-serif;">Good Day, Michael</h1>
+                            <p class="text-zinc-400 mt-2">Here's what's happening with your fleet today</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="refreshData()" 
+                                    class="flex items-center gap-2 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-3xl">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                                <span>Refresh</span>
+                            </button>
+                            <button onclick="showAddVehicleModal()" 
+                                    class="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-semibold rounded-3xl">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>New Vehicle</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                        ${createStatCard('Total Vehicles', vehicles.length, 'fa-truck', 'text-yellow-400')}
+                        ${createStatCard('Active', 18, 'fa-circle-check', 'text-emerald-400')}
+                        ${createStatCard('In Maintenance', 3, 'fa-screwdriver-wrench', 'text-orange-400')}
+                        ${createStatCard('Drivers', drivers.length, 'fa-user-group', 'text-sky-400')}
+                        ${createStatCard('Deliveries Today', 47, 'fa-boxes-packing', 'text-violet-400')}
+                        ${createStatCard('Fleet Health', '94%', 'fa-heart-pulse', 'text-rose-400')}
+                    </div>
+                    
+                    <!-- Charts and Fleet Overview -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-10">
+                        <!-- Recent Vehicles -->
+                        <div class="lg:col-span-7 bg-zinc-900 rounded-3xl p-8">
+                            <div class="flex justify-between mb-6">
+                                <h2 class="text-xl font-semibold">Fleet Overview</h2>
+                                <button onclick="navigateTo('fleet')" class="text-yellow-400 text-sm flex items-center gap-1">View all <i class="fa-solid fa-arrow-right"></i></button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="mini-vehicles">
+                                <!-- populated by JS -->
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Map -->
+                        <div class="lg:col-span-5 bg-zinc-900 rounded-3xl p-8 map-container h-[380px] relative">
+                            <div class="absolute top-8 left-8 z-10">
+                                <div class="glass px-5 py-2 rounded-3xl text-sm">Live GPS Tracking</div>
+                            </div>
+                            <div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">
+                                <div class="text-center">
+                                    <div class="w-40 h-40 border-4 border-dashed border-yellow-400/30 rounded-full mx-auto mb-6 flex items-center justify-center">
+                                        <div class="text-center">
+                                            <i class="fa-solid fa-location-dot text-6xl text-yellow-400 animate-pulse"></i>
+                                        </div>
+                                    </div>
+                                    <p class="font-medium">3 vehicles en route</p>
+                                </div>
+                            </div>
+                            <!-- Simulated moving dots -->
+                            <div class="absolute top-[30%] left-[25%] w-5 h-5 bg-emerald-400 rounded-full vehicle-dot" style="box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.3);"></div>
+                            <div class="absolute top-[55%] left-[65%] w-5 h-5 bg-sky-400 rounded-full vehicle-dot" style="animation-delay: 800ms; box-shadow: 0 0 0 6px rgba(56, 189, 248, 0.3);"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            renderMiniVehicles();
+        }
+        
+        function createStatCard(label, value, icon, color) {
+            return `
+                <div class="glass rounded-3xl p-7 card-hover">
+                    <div class="flex justify-between">
+                        <div>
+                            <div class="text-sm text-zinc-400">${label}</div>
+                            <div class="text-4xl font-semibold mt-3 counter">${value}</div>
+                        </div>
+                        <i class="fa-solid ${icon} text-4xl ${color}"></i>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderMiniVehicles() {
+            const container = document.getElementById('mini-vehicles');
+            if (!container) return;
+            
+            let html = '';
+            vehicles.slice(0, 4).forEach(v => {
+                html += `
+                    <div onclick="showVehicleDetail('${v.id}')" class="bg-zinc-800 rounded-3xl p-5 flex gap-5 cursor-pointer hover:bg-zinc-700 transition-colors">
+                        <img src="${v.image}" class="w-24 h-20 object-cover rounded-2xl">
+                        <div class="flex-1">
+                            <div class="flex justify-between">
+                                <div class="font-semibold">${v.brand} ${v.model}</div>
+                                <span class="text-xs px-3 py-1 bg-emerald-900 text-emerald-300 rounded-3xl">${v.status}</span>
+                            </div>
+                            <div class="text-xs text-zinc-400">${v.reg}</div>
+                            <div class="mt-4 flex items-center justify-between text-xs">
+                                <div>${v.mileage.toLocaleString()} km</div>
+                                <div class="flex items-center gap-1">
+                                    <div class="w-20 h-2 bg-zinc-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-yellow-400" style="width: ${v.fuelLevel}%"></div>
+                                    </div>
+                                    <span>${v.fuelLevel}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        
+        function renderFleet() {
+            const area = document.getElementById('content-area');
+            let html = `
+                <div>
+                    <div class="flex justify-between items-center mb-8">
+                        <h1 class="text-4xl font-semibold">Fleet Management</h1>
+                        <button onclick="showAddVehicleModal()" class="bg-yellow-400 text-black px-6 py-3 rounded-3xl font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Add Vehicle
+                        </button>
+                    </div>
+                    
+                    <div class="glass rounded-3xl overflow-hidden">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-zinc-700">
+                                    <th class="text-left p-6">Vehicle</th>
+                                    <th class="text-left p-6">Reg No.</th>
+                                    <th class="text-left p-6">Driver</th>
+                                    <th class="text-left p-6">Mileage</th>
+                                    <th class="text-left p-6">Status</th>
+                                    <th class="w-32"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="fleet-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            area.innerHTML = html;
+            renderFleetTable();
+        }
+        
+        function renderFleetTable() {
+            const tbody = document.getElementById('fleet-table-body');
+            if (!tbody) return;
+            
+            let html = '';
+            vehicles.forEach(vehicle => {
+                html += `
+                    <tr class="border-b border-zinc-700 hover:bg-zinc-800/70 transition-colors">
+                        <td class="p-6">
+                            <div class="flex items-center gap-4">
+                                <img src="${vehicle.image}" class="w-12 h-12 object-cover rounded-2xl">
+                                <div>
+                                    <div class="font-medium">${vehicle.brand} ${vehicle.model}</div>
+                                    <div class="text-xs text-zinc-400">${vehicle.year}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-6 font-mono text-sm">${vehicle.reg}</td>
+                        <td class="p-6">${vehicle.driver}</td>
+                        <td class="p-6">${vehicle.mileage.toLocaleString()} km</td>
+                        <td class="p-6">
+                            <span class="inline-block px-4 py-1 text-xs rounded-3xl ${vehicle.status === 'Active' ? 'bg-emerald-900 text-emerald-300' : 'bg-orange-900 text-orange-300'}">
+                                ${vehicle.status}
+                            </span>
+                        </td>
+                        <td class="p-6">
+                            <button onclick="editVehicle('${vehicle.id}'); event.stopImmediatePropagation()" class="px-5 py-2 text-xs border border-zinc-600 hover:border-yellow-400 rounded-2xl">Edit</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+        
+        function showAddVehicleModal() {
+            const modal = document.getElementById('vehicle-modal');
+            document.getElementById('modal-title').textContent = 'Add New Vehicle';
+            // Simple form for demo
+            document.getElementById('vehicle-form').innerHTML = `
+                <div class="col-span-2">
+                    <label class="block text-xs uppercase tracking-widest mb-2">Registration Number</label>
+                    <input id="v-reg" type="text" value="NEW-4567" class="w-full bg-zinc-800 border border-zinc-600 rounded-2xl px-5 py-4">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest mb-2">Brand</label>
+                    <input id="v-brand" type="text" value="Volvo" class="w-full bg-zinc-800 border border-zinc-600 rounded-2xl px-5 py-4">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest mb-2">Model</label>
+                    <input id="v-model" type="text" value="FH16" class="w-full bg-zinc-800 border border-zinc-600 rounded-2xl px-5 py-4">
+                </div>
+                <div class="col-span-2 mt-4">
+                    <label class="block text-xs uppercase tracking-widest mb-2">Notes</label>
+                    <textarea id="v-notes" class="w-full bg-zinc-800 border border-zinc-600 rounded-3xl px-5 py-4 h-28" placeholder="Additional information..."></textarea>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        function saveVehicle() {
+            // Demo save
+            const newVehicle = {
+                id: "V" + (100 + vehicles.length),
+                reg: document.getElementById('v-reg').value || "NEW-9999",
+                brand: document.getElementById('v-brand').value || "Unknown",
+                model: document.getElementById('v-model').value || "Model",
+                year: 2025,
+                status: "Active",
+                mileage: 120,
+                fuelLevel: 90,
+                driver: "Unassigned",
+                image: "https://picsum.photos/id/180/600/400"
+            };
+            
+            vehicles.push(newVehicle);
+            closeModal('vehicle-modal');
+            showToast('Vehicle added successfully');
+            
+            if (currentView === 'fleet') renderFleet();
+            else if (currentView === 'dashboard') renderDashboard();
+        }
+        
+        function editVehicle(id) {
+            showToast(`Editing vehicle ${id} (demo)`);
+        }
+        
+        function showVehicleDetail(id) {
+            const vehicle = vehicles.find(v => v.id === id);
+            if (!vehicle) return;
+            
+            showToast(`Viewing details for ${vehicle.brand} ${vehicle.model}`);
+            // Could expand into full modal later
+        }
+        
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        
+        function renderDrivers() {
+            const area = document.getElementById('content-area');
+            area.innerHTML = `
+                <h1 class="text-4xl font-semibold mb-8">Driver Management</h1>
+                <div class="glass rounded-3xl p-8">
+                    <p class="text-zinc-400">Driver list would appear here with full CRUD capabilities.</p>
+                    <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+                        ${drivers.map(d => `
+                            <div class="bg-zinc-800 rounded-3xl p-6">
+                                <div class="flex gap-4">
+                                    <div class="w-14 h-14 bg-zinc-700 rounded-2xl"></div>
+                                    <div class="flex-1">
+                                        <div class="font-semibold">${d.name}</div>
+                                        <div class="text-xs text-emerald-400">${d.status}</div>
+                                        <div class="text-sm mt-6">${d.phone}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderTrips() {
+            const area = document.getElementById('content-area');
+            area.innerHTML = `
+                <h1 class="text-4xl font-semibold mb-8">Trip Management</h1>
+                <div class="text-center py-20 text-zinc-400">
+                    <i class="fa-solid fa-road text-7xl mb-6 opacity-30"></i>
+                    <p class="text-xl">Trip scheduler coming in full version</p>
+                    <button onclick="showToast('Demo trip created')" class="mt-8 px-8 py-4 bg-yellow-400 text-black rounded-3xl">Create Sample Trip</button>
+                </div>
+            `;
+        }
+        
+        function renderGPS() {
+            const area = document.getElementById('content-area');
+            area.innerHTML = `
+                <div class="max-w-6xl mx-auto">
+                    <h1 class="text-4xl font-semibold mb-8">Live Fleet Tracking</h1>
+                    <div class="map-container rounded-3xl h-[620px] relative overflow-hidden flex items-center justify-center border border-yellow-400/20">
+                        <div class="text-center z-20">
+                            <div class="inline-flex items-center gap-4 bg-black/60 px-8 py-4 rounded-3xl mb-8">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-emerald-400 rounded-full animate-ping"></div>
+                                    <span class="text-emerald-300">3 vehicles moving</span>
+                                </div>
+                            </div>
+                            <p class="text-2xl font-light">Simulated real-time GPS map</p>
+                            <p class="text-zinc-400 mt-3">Vehicles are animated in the full version using Leaflet or Google Maps API</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderMaintenance() {
+            const area = document.getElementById('content-area');
+            area.innerHTML = `
+                <h1 class="text-4xl font-semibold mb-8">Maintenance &amp; Service</h1>
+                <div class="glass rounded-3xl p-10 text-center">
+                    <i class="fa-solid fa-toolbox text-8xl text-amber-400 mb-8"></i>
+                    <p class="max-w-md mx-auto">Maintenance calendar, service history and upcoming reminders would be displayed here.</p>
+                </div>
+            `;
+        }
+        
+        function renderReports() {
+            const area = document.getElementById('content-area');
+            area.innerHTML = `
+                <h1 class="text-4xl font-semibold mb-8">Analytics &amp; Reports</h1>
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="glass rounded-3xl p-8">
+                        <h3 class="font-medium mb-4">Monthly Revenue</h3>
+                        <canvas id="revenue-canvas" width="500" height="260"></canvas>
+                    </div>
+                    <div class="glass rounded-3xl p-8">
+                        <h3 class="font-medium mb-4">Fleet Utilization</h3>
+                        <div class="h-64 flex items-center justify-center text-amber-400">
+                            <i class="fa-solid fa-chart-pie text-8xl"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Simple canvas chart
+            setTimeout(() => {
+                const canvas = document.getElementById('revenue-canvas');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(60, 180, 50, 80);
+                    ctx.fillRect(160, 120, 50, 140);
+                    ctx.fillRect(260, 60, 50, 200);
+                    ctx.fillRect(360, 150, 50, 110);
+                }
+            }, 300);
+        }
+        
+        function renderContent() {
+            const area = document.getElementById('content-area');
+            if (currentView === 'dashboard') {
+                renderDashboard();
+            } else if (currentView === 'fleet') {
+                renderFleet();
+            } else if (currentView === 'drivers') {
+                renderDrivers();
+            } else if (currentView === 'trips') {
+                renderTrips();
+            } else if (currentView === 'gps') {
+                renderGPS();
+            } else if (currentView === 'maintenance') {
+                renderMaintenance();
+            } else if (currentView === 'reports') {
+                renderReports();
+            }
+        }
+        
+        function login() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            currentView = 'dashboard';
+            renderSidebar();
+            renderContent();
+            showToast('Welcome back to FleetForge');
+        }
+        
+        function logout() {
+            if (confirm('Sign out of FleetForge?')) {
+                document.getElementById('main-app').classList.add('hidden');
+                document.getElementById('login-screen').classList.remove('hidden');
+            }
+        }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').textContent = message;
+            toast.classList.remove('hidden');
+            toast.style.transform = 'translateY(0)';
+            
+            setTimeout(() => {
+                toast.style.transform = 'translateY(80px)';
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 400);
+            }, 2800);
+        }
+        
+        function toggleNotifications() {
+            showToast('You have 7 unread notifications');
+        }
+        
+        function toggleProfileMenu() {
+            showToast('Profile menu would open here');
+        }
+        
+        function toggleSettings() {
+            showToast('Settings panel would appear (company info, theme, etc.)');
+        }
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        function performGlobalSearch(query) {
+            if (!query) return;
+            showToast(`Searching for "${query}" across fleet...`);
+            // Could switch to fleet view etc.
+            navigateTo('fleet');
+        }
+        
+        function refreshData() {
+            showToast('Fleet data refreshed');
+            if (currentView === 'dashboard') renderDashboard();
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.metaKey && e.key === "k") {
+                e.preventDefault();
+                document.getElementById('global-search').focus();
+            }
+        });
+        
+        // Initialize
+        window.onload = function() {
+            // Preload some data
+            renderSidebar();
+            // Auto login for demo convenience after 400ms
+            setTimeout(() => {
+                if (document.getElementById('login-screen').classList.contains('hidden') === false) {
+                    login();
+                }
+            }, 420);
+            
+            // Demo notification count pulse
+            setInterval(() => {
+                const count = document.getElementById('notif-count');
+                if (count) count.style.transform = 'scale(1.3)';
+                setTimeout(() => {
+                    if (count) count.style.transform = 'scale(1)';
+                }, 220);
+            }, 4500);
+        };
+    </script>
+</body>
+</html>
